@@ -1,0 +1,22 @@
+[
+  {
+    "question": "Luật Hôn nhân và Gia đình 2014 điều chỉnh những vấn đề chính nào?",
+    "ground_truth": "Quy định chế độ hôn nhân và gia đình; chuẩn mực pháp lý cho ứng xử giữa các thành viên; và trách nhiệm của cá nhân, tổ chức, Nhà nước, xã hội trong xây dựng, củng cố chế độ hôn nhân và gia đình."
+  },
+  {
+    "question": "Nêu các nguyên tắc cơ bản của chế độ hôn nhân và gia đình theo luật.",
+    "ground_truth": "Hôn nhân tự nguyện, tiến bộ, một vợ một chồng, vợ chồng bình đẳng; tôn trọng và bảo vệ hôn nhân giữa các dân tộc/tôn giáo và với người nước ngoài; xây dựng gia đình ấm no, hạnh phúc, không phân biệt đối xử giữa các con; và bảo vệ, hỗ trợ trẻ em, người cao tuổi, người khuyết tật."
+  },
+  {
+    "question": "Theo luật, 'hôn nhân' và 'gia đình' được hiểu như thế nào?",
+    "ground_truth": "Hôn nhân là quan hệ giữa vợ và chồng sau khi kết hôn; gia đình là tập hợp người gắn bó do hôn nhân, huyết thống hoặc nuôi dưỡng, làm phát sinh quyền, nghĩa vụ theo luật."
+  },
+  {
+    "question": "Thế nào là 'tảo hôn'?",
+    "ground_truth": "Là việc lấy vợ, lấy chồng khi một hoặc cả hai bên chưa đủ tuổi kết hôn theo điểm a khoản 1 Điều 8 (nam từ đủ 20, nữ từ đủ 18)."
+  },
+  {
+    "question": "Điều kiện kết hôn hợp pháp gồm những gì?",
+    "ground_truth": "Nam từ đủ 20 tuổi, nữ từ đủ 18 tuổi; tự nguyện; không mất năng lực hành vi dân sự; và không thuộc trường hợp cấm kết hôn theo khoản 2 Điều 5."
+  }
+]

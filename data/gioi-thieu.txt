@@ -1,2 +1,4 @@
-Là chatbot
-được thiết kế bởi tác giả là Nomads
+$payload = @{ text = "có chấp nhận hôn nhân đồng tính không" } | ConvertTo-Json -Depth 5
+Invoke-RestMethod -Method Post -Uri 'http://localhost:8000/ask_context' `
+  -ContentType 'application/json; charset=utf-8' `
+  -Body ([System.Text.Encoding]::UTF8.GetBytes($payload))

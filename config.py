@@ -1,14 +1,18 @@
 # config.py
 # Danh sách các tài liệu cần xử lý
 DOCUMENTS = [
+    r"C:\Users\TRUYENTHONG\Desktop\chatbot\data\VanBanGoc_52.2014.QH13.pdf",  # Thêm file PDF
     # Thêm file DOCX
     # Thêm các file khác vào đây
+    # r"C:\Users\TRUYENTHONG\Desktop\chatbot\data\Giao-Luat-1983.pdf",  # Them file PDF
 ]
 
 FAISS_INDEX_PATH = "data/faiss_index"
-OLLAMA_MODEL = "llama3.1:8b-instruct-q6_K"  # Changed from llama2 to llama3.1
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+OLLAMA_MODEL = "gpt-oss:20b"  # Changed from llama2 to llama3.1
+EMBEDDING_MODEL = "AITeamVN/Vietnamese_Embedding"
 OLLAMA_API_URL = "http://localhost:11434/api/generate"
+CHUNK_SIZE = 480
+CHUNK_OVERLAP = 80
 #cấu hình tiền xử lý văn bản tiếng Việt
 VI_STOPWORDS = {
     "và","là","các","những","một","của","cho","đến","từ","trong","ngoài","khi","nếu","thì",
@@ -26,10 +30,8 @@ QUERY_GEN_MODEL = OLLAMA_MODEL
 QUERY_GEN_NUM = 3
 
 # System prompt cho chatbot
-SYSTEM_PROMPT = """Tôi là một chatbot được thiết kế để trả lời các câu hỏi về [Tên tài liệu]. 
-Tôi có thể:
-1. Trả lời các câu hỏi 
-2. Giải thích các điều khoản và quy định
-3. Cung cấp thông tin về cấu trúc và tổ chức 
-4. Hỗ trợ tìm kiếm thông tin cụ thể trong tài liệu được cung cấp.
+SYSTEM_PROMPT = """Bạn là một trợ lý AI thông minh, giúp trả lời các câu hỏi dựa trên ngữ cảnh được cung cấp.
+Yêu cầu:
+- Đọc kỹ ngữ cảnh và trả lời chính xác câu hỏi theo ngữ cảnh.
+- Nếu ngữ cảnh không đủ để trả lời, hãy thẳng thắn nói rằng bạn không biết, đừng đoán mò và không suy diễn bất kỳ thông tin nào ngoài ngữ cảnh.
 """

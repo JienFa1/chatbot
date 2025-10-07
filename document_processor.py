@@ -2,7 +2,7 @@
 from langchain_community.document_loaders.pdf import PyPDFLoader
 from langchain_community.document_loaders.text import TextLoader
 from langchain_experimental.text_splitter import SemanticChunker
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from docx import Document as DocxDoc
 from docx.oxml.table import CT_Tbl
@@ -11,7 +11,7 @@ from docx.table import Table as DocxTable
 from docx.text.paragraph import Paragraph as DocxParagraph
 from langchain_core.documents import Document as LcDoc
 import config
-import os
+import torch, os
 
 class DocxLoader:
     def __init__(self, file_path):
@@ -60,14 +60,30 @@ class DocxLoader:
         # content = "\n".join(text_lines)
         # # <- Trả về LangChain Document
         # return [LcDoc(page_content=content, metadata={"source": self.file_path})]
+def _clean_text(s: str) -> str:
+    if not s:
+        return ""
+    # loại ký tự điều khiển phổ biến & chuẩn hóa khoảng trắng
+    s = (s.replace("\x00", " ")
+           .replace("\u200b", " ")   # zero-width space
+           .replace("\ufeff", " ")   # BOM
+           .replace("\xa0", " "))    # NBSP từ DOCX/PDF
+    # gom nhiều khoảng trắng về 1, chuẩn hóa xuống dòng
+    s = "\n".join(" ".join(line.split()) for line in s.splitlines())
+    return s.strip()
+
 def process_documents():
     
     # Khởi tạo embeddings và SemanticChunker
-    embeddings = HuggingFaceEmbeddings(model_name=config.EMBEDDING_MODEL)
+    embeddings = HuggingFaceEmbeddings(
+        model_name=config.EMBEDDING_MODEL, 
+        model_kwargs={"device": "cpu"},
+        encode_kwargs={"normalize_embeddings": True},
+    )
     chunker = SemanticChunker(
         embeddings,
-        buffer_size = 2, breakpoint_threshold_type="percentile",
-        breakpoint_threshold_amount=95,
+        buffer_size = 1, breakpoint_threshold_type="percentile",
+        breakpoint_threshold_amount=88,
     )
     # Danh sách để lưu tất cả các chunks
     all_chunks = []
@@ -95,8 +111,19 @@ def process_documents():
             # Load tài liệu
             pages = loader.load()
             
+            clean_pages = []
+            for p in pages:
+                t = _clean_text(getattr(p, "page_content", ""))
+                if t:                         # bỏ trang rỗng sau khi clean
+                    p.page_content = t
+                    clean_pages.append(p)
+
+            if not clean_pages:
+                print("File rỗng sau khi làm sạch, bỏ qua.")
+                continue
+
             # Chia nhỏ tài liệu thành các semantic chunks bằng SemanticChunker
-            chunks = chunker.split_documents(pages)
+            chunks = chunker.split_documents(clean_pages)
             all_chunks.extend(chunks)
             
         except Exception as e:

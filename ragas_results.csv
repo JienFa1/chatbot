@@ -1,0 +1,2 @@
+num_samples,faithfulness,answer_relevancy,context_precision,context_recall
+5,0.6590909090909091,0.8388151780961757,0.4674761904569363,0.65

@@ -28,3 +28,19 @@ class Chatbot:
                 
             response = self.get_response(user_input)
             print(f"Chatbot: {response}")
+            
+    def get_response_with_context(self, question, max_contexts: int = None):
+        """
+        Trả về cả 'response' và 'contexts' (list[str]) để đánh giá RAGAS.
+        max_contexts: tùy chọn cắt bớt số đoạn context nếu muốn.
+        """
+        relevant_chunks = self.retriever.get_relevant_chunks(question)
+        if isinstance(max_contexts, int) and max_contexts > 0:
+            relevant_chunks = relevant_chunks[:max_contexts]
+
+        context = "\n".join(relevant_chunks)
+        response = self.ollama.get_response(question, context)
+        return {
+            "response": response,
+            "contexts": relevant_chunks
+        }
