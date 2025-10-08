@@ -70,7 +70,7 @@ def _resolve_id_entries(vectorstore: FAISS) -> List[Tuple[int, str]]:
     return list(enumerate(sequence))
 
 
-def log_samples(vectorstore: FAISS, preview: int = 3) -> None:
+def log_samples(vectorstore: FAISS, preview: int = 5) -> None:
     faiss_index = getattr(vectorstore, "index", None)
     if faiss_index is None or not hasattr(faiss_index, "reconstruct"):
         logging.error("FAISS index object does not expose reconstruct().")

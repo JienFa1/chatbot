@@ -27,7 +27,7 @@ VI_STOP_PHRASES = {"vì vậy", "do đó", "tuy nhiên", "mặt khác", "bên c�
 # Model dùng để sinh subquery (có thể trùng OLLAMA_MODEL)
 QUERY_GEN_MODEL = OLLAMA_MODEL
 # Số subquery LLM cần tạo (không tính query gốc)
-QUERY_GEN_NUM = 3
+QUERY_GEN_NUM = 1
 
 # System prompt cho chatbot
 SYSTEM_PROMPT = """Bạn là một trợ lý AI thông minh, giúp trả lời các câu hỏi dựa trên ngữ cảnh được cung cấp.

@@ -13,21 +13,28 @@ import json
 import re
 import requests
 import config
+import torch
 
+torch.cuda.empty_cache()
 
 VI_STOP_PHRASES = {p.replace(" ", "_") for p in config.VI_STOP_PHRASES}
 DEFAULT_STOPWORDS = (
     set(map(str.lower, config.VI_STOPWORDS))
-    .union(config.VI_STOP_PHRASES)
     .union(VI_STOP_PHRASES)
 )
 def _vi_preprocess(text: str) -> str:
-    # Tráº£ vá» chuá»—i Ä‘Ã£ tÃ¡ch: "tuy_nhien , cong_ty ..." (PyVi sáº½ thÃªm "_" cho cá»¥m)
-    return ViTokenizer.tokenize(str(text).lower())
-#lÃ½ thuyáº¿t: ThÃªm stopwords tiáº¿ng Viá»‡t
+    TOKEN_RE = re.compile(r"^[a-zA-ZÀ-ỹ_]+$", re.UNICODE)
+    s = ViTokenizer.tokenize(str(text).lower())
+    toks = []
+    for t in s.split():
+        if t in DEFAULT_STOPWORDS:
+            continue
+        if not TOKEN_RE.match(t):
+            continue
+        toks.append(t)
+    return " ".join(toks)
 
 def _extract_prf_terms(docs: List[Document], top_m: int = 6) -> List[str]:
-    """Láº¥y top_m term (1-2 gram) Ä‘á»ƒ má»Ÿ rá»™ng query tá»« táº­p pháº£n há»“i giáº£ Ä‘á»‹nh."""
     texts = [d.page_content for d in docs if getattr(d, "page_content", None)]
     stop_words = list(DEFAULT_STOPWORDS)
     if not texts:
@@ -35,7 +42,7 @@ def _extract_prf_terms(docs: List[Document], top_m: int = 6) -> List[str]:
     vec = TfidfVectorizer(tokenizer=_vi_preprocess,  token_pattern=r"(?u)\b\w+\b", ngram_range=(1, 2), 
                           stop_words=stop_words, strip_accents=None, max_features=4096)
     X = vec.fit_transform(texts)                # shape: (#docs, #terms)
-    scores = np.asarray(X.sum(axis=0)).ravel()  # tá»•ng tf-idf theo term
+    scores = np.asarray(X.sum(axis=0)).ravel()  # tổng tf-idf theo term
     terms = np.array(vec.get_feature_names_out())
     idx = scores.argsort()[::-1][:top_m]
     return terms[idx].tolist()
@@ -55,18 +62,12 @@ def _dedup(docs):
     return out
 
 def _reciprocal_rank_fusion(results, k=60, return_scores=False, key_fn=None):
-    """
-    RRF gá»™p nhiá»u list xáº¿p háº¡ng (list[list[Document]]).
-    Máº·c Ä‘á»‹nh tráº£ vá» list[Document] (Ä‘Ã£ rerank & dedup).
-    Náº¿u return_scores=True, tráº£ vá» list[(Document, score)].
-    """
-    # HÃ m táº¡o khÃ³a dedup (á»•n cho LangChain Document)
+   
     if key_fn is None:
         def key_fn(doc):
             if isinstance(doc, Document):
                 src = doc.metadata.get("source", "")
                 page = doc.metadata.get("page", "")
-                # khÃ³a á»•n Ä‘á»‹nh theo ná»™i dung + vÃ i trÆ°á»ng nháº­n diá»‡n
                 return json.dumps([doc.page_content, src, page], ensure_ascii=False)
             try:
                 return json.dumps(doc, ensure_ascii=False, sort_keys=True)
@@ -79,10 +80,9 @@ def _reciprocal_rank_fusion(results, k=60, return_scores=False, key_fn=None):
     for docs in results:                      # results: list of ranked lists
         for rank, doc in enumerate(docs):
             key = key_fn(doc)
-            keep_doc[key] = doc               # lÆ°u doc tÆ°Æ¡ng á»©ng vá»›i key
+            keep_doc[key] = doc               
             fused_scores[key] += 1.0 / (rank + k)  # RRF
 
-    # sáº¯p xáº¿p theo fused score giáº£m dáº§n
     items = sorted(fused_scores.items(), key=lambda kv: kv[1], reverse=True)
 
     if return_scores:
@@ -92,27 +92,26 @@ def _reciprocal_rank_fusion(results, k=60, return_scores=False, key_fn=None):
 
 class Retriever:
     def __init__(self):
-        device = getattr(config, "EMBEDDING_DEVICE", "cpu")
         embeddings = HuggingFaceEmbeddings(
             model_name=config.EMBEDDING_MODEL,
-            model_kwargs={"device": device},
-            encode_kwargs={"normalize_embeddings": True},
+            model_kwargs={"device": "cuda"},
+        encode_kwargs={
+            "normalize_embeddings": True,
+            "batch_size" : 64 }
         )
         self.embeddings = embeddings
         self.vectorstore = FAISS.load_local(config.FAISS_INDEX_PATH, embeddings, allow_dangerous_deserialization=True)
 
-        # Táº­p docs Ä‘áº§y Ä‘á»§ Ä‘á»ƒ build BM25
         self._all_docs: List[Document] = list(getattr(self.vectorstore.docstore, "_dict", {}).values())
-        # Dense baseline (MMR) Ä‘á»ƒ láº¥y pool rá»™ng cho PRF
         self.dense_baseline = self.vectorstore.as_retriever(
             search_type="mmr",
-            search_kwargs={"k": 10, "fetch_k": 40, "lambda_mult": 0.5},
+            search_kwargs={"k": 10, "fetch_k": 40, "lambda_mult": 0.4},
         )
         self.bm25 = BM25Retriever.from_documents(self._all_docs, preprocess_func = _vi_preprocess) if self._all_docs else None
         if self.bm25:
             self.bm25.k = 10
         try:
-            self.cross_encoder = CrossEncoder("BAAI/bge-reranker-v2-m3")
+            self.cross_encoder = CrossEncoder("jinaai/jina-reranker-v2-base-multilingual", device="cuda", automodel_args={"torch_dtype": "float16"})
         except Exception:
             self.cross_encoder = None
 
@@ -137,7 +136,6 @@ class Retriever:
             r = requests.post(config.OLLAMA_API_URL, json=payload, timeout=60)
             r.raise_for_status()
             text = r.json().get("response", "")
-            # Chuáº©n hÃ³a: bá» sá»‘ thá»© tá»±, dáº¥u '-', dáº¥u ngoáº·c, ngoáº·c kÃ©p
             lines = []
             for ln in text.splitlines():
                 s = ln.strip()
@@ -147,32 +145,27 @@ class Retriever:
                 s = s.strip(' "\'')
                 if s:
                     lines.append(s)
-            # Cáº¯t Ä‘Ãºng sá»‘ lÆ°á»£ng
-            lines = lines[: int(getattr(config, "QUERY_GEN_NUM", 3))]
-            # LuÃ´n Ä‘Æ°a query gá»‘c lÃªn Ä‘áº§u
+            lines = lines[: int(getattr(config, "QUERY_GEN_NUM", 2))]
             return [question] + lines if lines else [question]
         except Exception:
-            # fallback náº¿u LLM lá»—i
             return [question]
     
     def _hybrid_retrieve_prf(self,query: str,*,k: int = 10,fb_docs: int = 8,alpha: float = 0.6,prf_terms: int = 6,
     ) -> List[List[Document]]:
-        # LÆ°á»£t 1: baseline
         dense_1: List[Document] = self.dense_baseline.invoke(query) if self.dense_baseline else []
         sparse_1: List[Document] = (self.bm25.invoke(query) if self.bm25 else [])
         
-        # Chá»n táº­p pháº£n há»“i giáº£ Ä‘á»‹nh (káº¿t há»£p 2 nhÃ¡nh)
         fb: List[Document] = []
         fb += dense_1[:max(1, fb_docs // 2)]
         fb += sparse_1[:max(1, fb_docs - len(fb))]
         if not fb:
             return [_dedup(dense_1)[:k], _dedup(sparse_1)[:k]]
         
-        # Sparse PRF: má»Ÿ rá»™ng query báº±ng TF-IDF terms
+        # Sparse PRF: TF-IDF terms
         expansion = _extract_prf_terms(fb, top_m=prf_terms)
         expanded_query = query if not expansion else (query + " " + " ".join(expansion))
         
-        # Dense PRF: pha trá»™n embedding query vá»›i trung bÃ¬nh embedding tá»« fb ---
+        # Dense PRF: 
         fb_texts = [d.page_content for d in fb if getattr(d, "page_content", None)]
         try:
             q_vec = self.embeddings.embed_query(query)
@@ -186,14 +179,11 @@ class Retriever:
             else:
                 dense_2 = dense_1[:k]
         except Exception:
-            # Náº¿u embedding provider lá»—i, dÃ¹ng láº¡i káº¿t quáº£ baseline
             dense_2 = dense_1[:k]
         
-        # BM25 lÆ°á»£t 2 vá»›i query má»Ÿ rá»™ng
         if self.bm25:
             old_k = getattr(self.bm25, "k", None)
-            self.bm25.k = max(k, 20) #tÄƒng k á»Ÿ luá»t 2 Ä‘á»ƒ láº¥y pool rá»™ng hÆ¡n
-            #lÃ½ thuyáº¿t so sÃ¡nh BM25
+            self.bm25.k = max(k, 20) 
             sparse_2 = self.bm25.invoke(expanded_query)
             if old_k is not None:
                 self.bm25.k = old_k
@@ -211,24 +201,24 @@ class Retriever:
         return _reciprocal_rank_fusion(per_query_rrf, k=rrf_k)
     
     # ---------- Cross-encoder rerank ----------
-    def _cross_rerank(self, query: str, docs: List[Document], top_k: int = 8) -> List[Document]:
+    def _cross_rerank(self, query: str, docs: List[Document], top_k: int = 8, depth:int = 40) -> List[Document]:
         if not docs:
             return []
         if self.cross_encoder is None:
             return docs[:top_k]
-        pairs = [(query, d.page_content) for d in docs]
+        
+        candidates = docs[:min(depth, len(docs))] 
+        pairs = [(query, d.page_content) for d in candidates]
         scores = self.cross_encoder.predict(pairs)
         ranked = sorted(zip(docs, scores), key=lambda x: x[1], reverse=True)
         return [d for d, _ in ranked[:top_k]]
     
     def get_relevant_chunks(self, question: str, k: int = 8) -> List[str]:
-        # 1) LLM multi-query (ná»™i bá»™)
         queries = self._llm_generate_queries(question)
 
-        # 2) Hybrid + PRF cho tá»«ng subquery â†’ RRF má»—i subquery â†’ RRF across
         pool_docs = self._retrieve_rrf_for_queries(queries, rrf_k=60)
 
-        # 3) CrossEncoder rerank cuá»‘i
-        top_docs = self._cross_rerank(question, pool_docs, top_k=k)
+        depth = min(40, len(pool_docs))
+        top_docs = self._cross_rerank(question, pool_docs, top_k=k, depth=depth)
 
         return [d.page_content for d in top_docs]

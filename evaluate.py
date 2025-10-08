@@ -8,6 +8,7 @@ from typing import Any, Dict, List
 
 import pandas as pd
 import requests
+import torch
 from datasets import Dataset
 
 import config
@@ -24,6 +25,7 @@ from ragas.metrics import (
 )
 from ragas.run_config import RunConfig
 
+torch.cuda.empty_cache()
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -79,7 +81,7 @@ def _build_summary_frame(result: Any, sample_count: int) -> pd.DataFrame:
 def _prepare_run_config(sample_count: int) -> RunConfig:
     timeout_cfg = getattr(config, "RAGAS_TIMEOUT", 600)
     max_retries_cfg = getattr(config, "RAGAS_MAX_RETRIES", 5)
-    max_workers_cfg = getattr(config, "RAGAS_MAX_WORKERS", 1)
+    max_workers_cfg = getattr(config, "RAGAS_MAX_WORKERS", 2)
     log_tenacity_cfg = getattr(config, "RAGAS_LOG_TENACITY", False)
 
     try:
@@ -95,7 +97,7 @@ def _prepare_run_config(sample_count: int) -> RunConfig:
     try:
         max_workers = int(max_workers_cfg)
     except (TypeError, ValueError):
-        max_workers = 4
+        max_workers = 2
 
     max_workers = max(1, min(max_workers, max(1, sample_count)))
 
@@ -147,10 +149,10 @@ def main() -> None:
             temperature=0.0,
         )
     )
-    embedding_device = getattr(config, "EMBEDDING_DEVICE", "cpu")
+
     langchain_embeddings = HuggingFaceEmbeddings(
         model_name=config.EMBEDDING_MODEL,
-        model_kwargs={"device": embedding_device},
+        model_kwargs={"device": "cuda" if torch.cuda.is_available() else "cpu"},
         encode_kwargs={"normalize_embeddings": True},
     )
     ragas_embeddings = LangchainEmbeddingsWrapper(langchain_embeddings)
@@ -158,7 +160,7 @@ def main() -> None:
     metrics = [faithfulness, answer_relevancy, context_precision, context_recall]
     run_config = _prepare_run_config(sample_count=len(records))
 
-    batch_size_cfg = getattr(config, "RAGAS_BATCH_SIZE", None)
+    batch_size_cfg = 32
     try:
         batch_size = int(batch_size_cfg) if batch_size_cfg is not None else None
     except (TypeError, ValueError):
