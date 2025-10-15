@@ -129,7 +129,7 @@ Server sẽ chạy tại http://localhost:8000
 ```bash
 curl -X POST "http://localhost:8000/ask" \
      -H "Content-Type: application/json" \
-     -d '{"text": "giáo luật nói về gì"}'
+     -d '{"text": "Vai trò của báo chí cách mạng đối với việc truyền bá đường lối và tổ chức quần chúng trước 1945."}'
 ```
 
 #### Xem tài liệu API

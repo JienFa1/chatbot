@@ -1,6 +1,7 @@
 # document_processor.py
 from langchain_community.document_loaders.pdf import PyPDFLoader
 from langchain_community.document_loaders.text import TextLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
@@ -11,7 +12,10 @@ from docx.table import Table as DocxTable
 from docx.text.paragraph import Paragraph as DocxParagraph
 from langchain_core.documents import Document as LcDoc
 import config
-import torch, os
+import torch, os, re, logging
+from collections import Counter
+import unicodedata
+from typing import List
 
 class DocxLoader:
     def __init__(self, file_path):
@@ -72,6 +76,82 @@ def _clean_text(s: str) -> str:
     s = "\n".join(" ".join(line.split()) for line in s.splitlines())
     return s.strip()
 
+def _strip_boilerplate(text: str) -> str:
+    """
+    Clean cơ bản: xóa dòng chỉ toàn số (thường là số trang/mục rời),
+    chuẩn hóa Unicode NFC, và dọn khoảng trắng/thừa dòng.
+    """
+    text = text or ""
+    # xóa dòng chỉ có số (ví dụ: "12", "3", "218")
+    text = re.sub(r"(?m)^\s*\d+\s*$", " ", text)
+    # chuẩn hóa Unicode (tiếng Việt có dấu)
+    text = unicodedata.normalize("NFC", text)
+    # bỏ khoảng trắng trước newline, rút gọn nhiều newline liên tiếp
+    text = re.sub(r"[ \t]+\n", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+# 2) Remove repeated lines (header/footer lặp) theo nhiều trang
+def strip_boilerplate_generic(pages: List[str], min_ratio: float = 0.3) -> List[str]:
+    """
+    - Áp dụng _strip_boilerplate cho từng trang.
+    - Phát hiện dòng lặp (xuất hiện trên >= min_ratio số trang) để loại (header/footer).
+    - Thêm một vài pattern 'trung tính' (Page X / Page X of Y, 3/12, v.v.).
+
+    Trả về danh sách trang đã được làm sạch.
+    """
+    def _basic_clean(t: str) -> str:
+        return _strip_boilerplate(t or "")
+
+    pages = [_basic_clean(p) for p in pages]
+
+    if not pages:
+        return pages
+
+    # gom các dòng để đếm tần suất xuất hiện toàn corpus
+    all_lines, per_page = [], []
+    for p in pages:
+        lines = [l.strip() for l in p.splitlines() if l.strip()]
+        per_page.append(lines)
+        all_lines.extend(lines)
+
+    freq = Counter(all_lines)
+    # dòng xuất hiện ≥ min_ratio số trang và không quá dài -> coi là header/footer lặp
+    blacklist = {
+        l for l, c in freq.items()
+        if c / len(pages) >= min_ratio and len(l) <= 120
+    }
+
+    # các mẫu "trung tính" thường gặp ở mọi loại tài liệu
+    patterns = [
+        r"(?i)^page\s+\d+(\s+of\s+\d+)?$",  # Page 3 / Page 3 of 12
+        r"(?i)^\d+\s*/\s*\d+\s*$",          # 3/12
+    ]
+    def looks_like_running_header(line: str) -> bool:
+        return any(re.match(p, line) for p in patterns)
+
+    cleaned_pages = []
+    for lines in per_page:
+        kept = [l for l in lines if l not in blacklist and not looks_like_running_header(l)]
+        cleaned_pages.append("\n".join(kept))
+
+    return cleaned_pages
+
+
+# 3) Lọc chunk rác hiển nhiên (generic, không phụ thuộc domain)
+def is_valid_chunk(text: str) -> bool:
+    """
+    - Loại chuỗi quá ngắn (< 20 ký tự sau strip).
+    - Bắt buộc có ít nhất 1 ký tự chữ (A–Z hoặc tiếng Việt có dấu).
+    """
+    s = (text or "").strip()
+    if len(s) < 20:
+        return False
+    if not re.search(r"[A-Za-zÀ-ỹ]", s):
+        return False
+    return True
+
 def process_documents():
     
     # Khởi tạo embeddings và SemanticChunker
@@ -82,9 +162,14 @@ def process_documents():
     )
     chunker = SemanticChunker(
         embeddings,
-        buffer_size = 1, breakpoint_threshold_type="percentile",
-        breakpoint_threshold_amount=88,
+        buffer_size = 2, breakpoint_threshold_type="standard_deviation", #percentile
+        breakpoint_threshold_amount= 0.4, #90
     )
+    # RecursiveCharacterTextSplitter(
+    #     chunk_size = 800, 
+    #     chunk_overlap = 160,
+    #     separators = ["\n\n", "\n", " ", ""]
+    # ) 
     # Danh sách để lưu tất cả các chunks
     all_chunks = []
     
@@ -110,12 +195,21 @@ def process_documents():
             
             # Load tài liệu
             pages = loader.load()
-            
-            clean_pages = []
+
+            # 1) Clean cơ bản từng trang
+            _pages_raw = []
             for p in pages:
                 t = _clean_text(getattr(p, "page_content", ""))
-                if t:                         # bỏ trang rỗng sau khi clean
-                    p.page_content = t
+                _pages_raw.append(t)
+
+            # 2) Clean liên-trang (header/footer lặp)
+            _pages_clean = strip_boilerplate_generic(_pages_raw, min_ratio=0.25)
+
+            # 3) Gán ngược + loại trang rỗng sau tất cả các bước clean
+            clean_pages = []
+            for p, t in zip(pages, _pages_clean):
+                if t.strip():
+                    p.page_content = t.strip()
                     clean_pages.append(p)
 
             if not clean_pages:
@@ -124,7 +218,9 @@ def process_documents():
 
             # Chia nhỏ tài liệu thành các semantic chunks bằng SemanticChunker
             chunks = chunker.split_documents(clean_pages)
+            chunks = [c for c in chunks if is_valid_chunk(c.page_content)]
             all_chunks.extend(chunks)
+
             
         except Exception as e:
             print(f"Lỗi khi xử lý file {doc_path}: {str(e)}")

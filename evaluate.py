@@ -8,11 +8,11 @@ from typing import Any, Dict, List
 
 import pandas as pd
 import requests
-import torch
+import torch, re
 from datasets import Dataset
 
 import config
-from langchain_community.chat_models import ChatOllama
+from langchain_ollama import ChatOllama
 from langchain_huggingface import HuggingFaceEmbeddings
 from ragas import evaluate
 from ragas.embeddings import LangchainEmbeddingsWrapper
@@ -31,7 +31,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 API_URL = "http://localhost:8000/ask_context"
-EVAL_FILE = "evaluation_set.json"
+EVAL_FILE = r"C:\Users\TRUYENTHONG\Desktop\chatbot\ragas-eval-lich-su-dang-vn-20-wide.json"
 
 
 def _normalize_contexts(raw: Any) -> List[str]:
@@ -160,7 +160,7 @@ def main() -> None:
     metrics = [faithfulness, answer_relevancy, context_precision, context_recall]
     run_config = _prepare_run_config(sample_count=len(records))
 
-    batch_size_cfg = 32
+    batch_size_cfg = 16
     try:
         batch_size = int(batch_size_cfg) if batch_size_cfg is not None else None
     except (TypeError, ValueError):
@@ -184,8 +184,13 @@ def main() -> None:
         numeric_cols = summary_df.select_dtypes(include="number").columns
         formatters = {col: (lambda value, _col=col: _format_float(value)) for col in numeric_cols}
         print(summary_df.to_string(index=False, formatters=formatters))
-        summary_df.to_csv("ragas_results.csv", index=False)
-        print("\nDa luu: ragas_results.csv")
+        summary_df.to_json(
+            "ragas_results.json",
+            orient="records",
+            force_ascii=False,
+            indent=2,
+        )
+        print("\nDa luu: ragas_results.json")
 
     per_sample_df = None
     try:
@@ -194,12 +199,13 @@ def main() -> None:
         per_sample_df = None
 
     if per_sample_df is not None and not per_sample_df.empty:
-        if "contexts" in per_sample_df.columns:
-            per_sample_df["contexts"] = per_sample_df["contexts"].apply(
-                lambda value: " || ".join(value) if isinstance(value, list) else value
-            )
-        per_sample_df.to_csv("ragas_per_sample.csv", index=False)
-        print("Da luu chi tiet mau: ragas_per_sample.csv")
+        per_sample_df.to_json(
+            "ragas_per_sample.json",
+            orient="records",
+            force_ascii=False,
+            indent=2,
+        )
+        print("Da luu chi tiet mau: ragas_per_sample.json")
 
 
 if __name__ == "__main__":

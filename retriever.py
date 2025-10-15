@@ -34,7 +34,7 @@ def _vi_preprocess(text: str) -> str:
         toks.append(t)
     return " ".join(toks)
 
-def _extract_prf_terms(docs: List[Document], top_m: int = 6) -> List[str]:
+def _extract_prf_terms(docs: List[Document], top_m: int = 4) -> List[str]:
     texts = [d.page_content for d in docs if getattr(d, "page_content", None)]
     stop_words = list(DEFAULT_STOPWORDS)
     if not texts:
@@ -97,7 +97,7 @@ class Retriever:
             model_kwargs={"device": "cuda"},
         encode_kwargs={
             "normalize_embeddings": True,
-            "batch_size" : 64 }
+         }
         )
         self.embeddings = embeddings
         self.vectorstore = FAISS.load_local(config.FAISS_INDEX_PATH, embeddings, allow_dangerous_deserialization=True)
@@ -111,7 +111,7 @@ class Retriever:
         if self.bm25:
             self.bm25.k = 10
         try:
-            self.cross_encoder = CrossEncoder("jinaai/jina-reranker-v2-base-multilingual", device="cuda", automodel_args={"torch_dtype": "float16"})
+            self.cross_encoder = CrossEncoder("jinaai/jina-reranker-v2-base-multilingual", device="cuda",  model_kwargs={"torch_dtype": torch.float16})
         except Exception:
             self.cross_encoder = None
 
@@ -123,7 +123,7 @@ class Retriever:
             "Bằng cách tạo nhiều câu hỏi mang các góc nhìn (perspective) khác nhau từ câu hỏi gốc của người dùng, mục tiêu của bạn là giúp người dùng vượt qua những giới hạn về distance-based similarity search.\n"
             "Yêu cầu:\n"
             f"Chỉ in ra {config.QUERY_GEN_NUM} câu truy vấn mới: không đánh số; không ngoặc kép; mỗi truy vấn 1 dòng."
-            "Chỉ liệt kê câu hỏi, không viết câu giới thiệu"
+            "Chỉ in ra nội dung của câu hỏi mới, không viết câu giới thiệu, "
             f"Câu hỏi gốc: {question}\n"
         )
         payload = {
@@ -201,7 +201,7 @@ class Retriever:
         return _reciprocal_rank_fusion(per_query_rrf, k=rrf_k)
     
     # ---------- Cross-encoder rerank ----------
-    def _cross_rerank(self, query: str, docs: List[Document], top_k: int = 8, depth:int = 40) -> List[Document]:
+    def _cross_rerank(self, query: str, docs: List[Document], top_k: int = 5, depth:int = 40) -> List[Document]:
         if not docs:
             return []
         if self.cross_encoder is None:
@@ -213,7 +213,7 @@ class Retriever:
         ranked = sorted(zip(docs, scores), key=lambda x: x[1], reverse=True)
         return [d for d, _ in ranked[:top_k]]
     
-    def get_relevant_chunks(self, question: str, k: int = 8) -> List[str]:
+    def get_relevant_chunks(self, question: str, k: int = 5) -> List[str]:
         queries = self._llm_generate_queries(question)
 
         pool_docs = self._retrieve_rrf_for_queries(queries, rrf_k=60)
