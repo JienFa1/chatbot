@@ -1,10 +1,10 @@
-# Chatbot Giáo Luật Công Giáo
+# Chatbot
 
-Chatbot được thiết kế để trả lời các câu hỏi về Giáo Luật Công Giáo, sử dụng công nghệ AI và xử lý ngôn ngữ tự nhiên.
+Chatbot được thiết kế để trả lời các câu hỏi trong tài liệu nội bộ, sử dụng công nghệ AI và xử lý ngôn ngữ tự nhiên.
 
 ## Tính năng
 
-- Trả lời câu hỏi về nội dung Giáo Luật
+- Trả lời câu hỏi về nội dung trong tài liệu được cung cấp
 - Giải thích các điều khoản và quy định
 - Cung cấp thông tin về cấu trúc và tổ chức của Giáo Luật
 - Hỗ trợ tìm kiếm thông tin cụ thể
@@ -16,17 +16,22 @@ Chatbot được thiết kế để trả lời các câu hỏi về Giáo Luậ
 ```
 Demo-chat-ollama/
 ├── data/                   # Thư mục chứa tài liệu
-│   ├── Giao-Luat-1983.pdf  # File PDF chính
+│   ├── file.pdf  # File PDF chính
 │   ├── gioi-thieu.txt      # File text giới thiệu
 │   └── faiss_index/        # Thư mục chứa index FAISS
-├── venv/                   # Môi trường ảo Python
+├──env                      #môi trường ảo python
 ├── api.py                  # API server FastAPI
 ├── chatbot.py             # Lớp chính của chatbot
 ├── config.py              # Cấu hình hệ thống
 ├── document_processor.py  # Xử lý tài liệu
+├──evaluate.py             #đánh giá chatbot bằng RAGAS
+├──ragas-eval-lich-su-dang-vn-20-wide.json #tập dữ liệu cho việc đánh giá
 ├── ollama_interface.py    # Giao tiếp với Ollama
 ├── retriever.py           # Truy xuất thông tin
 ├── setup.py               # Script khởi tạo
+├──streamlit_app.py        #demo trực quan logic RAG
+├──verify_faiss_index.py   #kiểm tra FAISS
+├──faiss_verification.log  #kết quả kiểm tra FAISS
 └── requirements.txt       # Các thư viện cần thiết
 ```
 

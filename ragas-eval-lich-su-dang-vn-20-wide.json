@@ -102,5 +102,25 @@
   {
     "question": "Trình bày mối quan hệ giữa lực lượng chính trị và lực lượng vũ trang trong chiến lược khởi nghĩa của Đảng.",
     "ground_truth": "Lực lượng chính trị của quần chúng là nền tảng, tạo thế áp đảo chính trị; lực lượng vũ trang là nòng cốt, tạo sức mạnh trấn áp phản cách mạng và hỗ trợ quần chúng nổi dậy. Hai lực lượng phát triển song song, phối hợp trong khởi nghĩa từng phần và tổng khởi nghĩa, đảm bảo giành chính quyền nhanh gọn."
+  },
+  {
+    "question": "Phân tích điều kiện và nhân tố quyết định thắng lợi của Tổng khởi nghĩa Tháng Tám 1945.",
+    "ground_truth": "Điều kiện khách quan: Nhật đầu hàng Đồng minh, chính quyền tay sai tê liệt. Nhân tố quyết định: sự lãnh đạo đúng đắn, kịp thời chớp thời cơ của Đảng; Mặt trận Việt Minh rộng khắp; lực lượng chính trị và vũ trang trưởng thành; phương châm khởi nghĩa linh hoạt; phong trào cứu nước dâng cao, tạo sức mạnh tổng hợp giành chính quyền trên phạm vi cả nước."
+  },
+  {
+    "question": "Ý nghĩa lịch sử của Cách mạng Tháng Tám 1945 đối với dân tộc Việt Nam và thế giới.",
+    "ground_truth": "Cách mạng Tháng Tám xoá bỏ chế độ thuộc địa–phong kiến, lập Nhà nước Việt Nam Dân chủ Cộng hoà, mở kỷ nguyên độc lập dân tộc gắn với chủ nghĩa xã hội; cổ vũ mạnh mẽ phong trào giải phóng dân tộc; chứng minh con đường giải phóng ở thuộc địa dưới sự lãnh đạo của đảng mácxít là khả thi."
+  },
+  {
+    "question": "Vai trò của báo chí cách mạng đối với việc truyền bá đường lối và tổ chức quần chúng trước 1945.",
+    "ground_truth": "báo chí cách mạng đã đóng vai trò quan trọng trong việc truyền bá đường lối và tổ chức quần chúng trước 1945, đã giúp phổ biến thông tin, ý tưởng và mục tiêu của Đảng đến với người dân, tạo ra một sự đồng thuận và nhất trí trong nhân dân về cuộc Cách mạng Tháng Tám. Ngoài ra, báo chí cũng đã đóng vai trò quan trọng trong việc tổ chức và động viên quần chúng tham gia vào các hoạt động cách mạng.\n\nCụ thể hơn, báo chí cách mạng đã giúp phổ biến Cương lĩnh chính trị đầu tiên của Đảng (1930) và các văn kiện khác liên quan đến đường lối và mục tiêu của Đảng. Điều này cho thấy rằng báo chí cách mạng đã đóng vai trò là một công cụ quan trọng trong việc truyền bá đường lối và tổ chức quần chúng trước 1945.\n\nTóm lại, vai trò của báo chí cách mạng đối với việc truyền bá đường lối và tổ chức quần chúng trước 1945 là rất quan trọng. Báo chí đã giúp phổ biến thông tin, ý tưởng và mục tiêu của Đảng đến với người dân, tạo ra một sự đồng thuận và nhất trí trong nhân dân về cuộc Cách mạng Tháng Tám."
+  },
+  {
+    "question": "Trình bày mối quan hệ giữa lực lượng chính trị và lực lượng vũ trang trong chiến lược khởi nghĩa của Đảng.",
+    "ground_truth": "Lực lượng chính trị của quần chúng là nền tảng, tạo thế áp đảo chính trị; lực lượng vũ trang là nòng cốt, tạo sức mạnh trấn áp phản cách mạng và hỗ trợ quần chúng nổi dậy. Hai lực lượng phát triển song song, phối hợp trong khởi nghĩa từng phần và tổng khởi nghĩa, đảm bảo giành chính quyền nhanh gọn."
+  },
+  {
+    "question": "Sự kết hợp giữa đường lối dân tộc và giai cấp thể hiện như thế nào trong lãnh đạo cách mạng 1930–1945?",
+    "ground_truth": "Đảng kết hợp mục tiêu độc lập dân tộc với chủ nghĩa xã hội; trong từng thời kỳ, khi mâu thuẫn dân tộc–đế quốc nổi trội thì đặt nhiệm vụ dân tộc lên trước để quy tụ lực lượng; vẫn giữ vai trò nòng cốt của công–nông và mục tiêu cuối cùng của giai cấp công nhân. Sự kết hợp này tạo linh hoạt sách lược và sức mạnh tổng hợp."
   }
 ]
